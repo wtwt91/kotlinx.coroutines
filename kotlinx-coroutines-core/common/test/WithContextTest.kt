@@ -7,6 +7,7 @@
 
 package kotlinx.coroutines
 
+import kotlinx.coroutines.channels.*
 import kotlin.test.*
 
 class WithContextTest : TestBase() {
@@ -367,6 +368,55 @@ class WithContextTest : TestBase() {
 
         joinAll(job, job2)
         finish(4)
+    }
+
+    @Test
+    fun testSequentialCancellationUndispatched() = runTest {
+        val latch = Channel<Unit>(1)
+        val job = launch {
+            expect(2)
+            withContext(NonCancellable) {
+                expect(3)
+                latch.receive()
+                expect(5)
+            }
+            expectUnreached()
+        }
+
+        expect(1)
+        yield()
+        expect(4)
+        job.cancel()
+        latch.send(Unit)
+        yield()
+        finish(6)
+    }
+
+    @Test
+    fun testExceptionWithSequentialCancellationUndispatched() = runTest {
+        val latch = Channel<Unit>(1)
+        val job = launch {
+            expect(2)
+            try {
+                withContext<Int>(NonCancellable) {
+                    expect(3)
+                    latch.receive()
+                    expect(5)
+                    throw TestException()
+                }
+                expectUnreached()
+            } catch (e: TestException) {
+                expect(6)
+            }
+        }
+
+        expect(1)
+        yield()
+        expect(4)
+        job.cancel()
+        latch.send(Unit)
+        yield()
+        finish(7)
     }
 
     private class Wrapper(val value: String) : Incomplete {

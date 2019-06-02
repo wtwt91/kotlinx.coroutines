@@ -299,7 +299,7 @@ class CoroutinesTest : TestBase() {
             } finally {
                 expect(5)
                 withContext(NonCancellable) { yield() } // to test
-                expect(7)
+                expectUnreached()
             }
             expectUnreached() // will get cancelled, because parent crashes
         }
@@ -307,7 +307,7 @@ class CoroutinesTest : TestBase() {
         yield() // to parent
         expect(6)
         parent.join() // make sure crashed parent still waits for its child
-        finish(8)
+        finish(7)
         // make sure is cancelled
         assertTrue(child.isCancelled)
     }

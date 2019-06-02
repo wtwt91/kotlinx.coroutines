@@ -16,9 +16,6 @@ class NonCancellableTest : TestBase() {
                 yield()
                 expect(4)
             }
-
-            expect(5)
-            yield()
             expectUnreached()
         }
 
@@ -36,7 +33,7 @@ class NonCancellableTest : TestBase() {
             } else {
                 assertNull(e.cause)
             }
-            finish(6)
+            finish(5)
         }
     }
 
@@ -49,9 +46,6 @@ class NonCancellableTest : TestBase() {
                 yield()
                 expect(4)
             }
-
-            expect(5)
-            yield()
             expectUnreached()
         }
 
@@ -64,7 +58,7 @@ class NonCancellableTest : TestBase() {
             expectUnreached()
         } catch (e: TestCancellationException) {
             assertEquals("TEST", e.message)
-            finish(6)
+            finish(5)
         }
     }
 
@@ -97,41 +91,6 @@ class NonCancellableTest : TestBase() {
             expectUnreached()
         } catch (e: CancellationException) {
             finish(6)
-        }
-    }
-
-    @Test
-    fun testNonCancellableTwice() = runTest {
-        expect(1)
-        val job = async {
-            withContext(NonCancellable) {
-                expect(2)
-                yield()
-                expect(4)
-            }
-
-            withContext(NonCancellable) {
-                expect(5)
-                yield()
-                expect(6)
-            }
-        }
-
-        yield()
-        job.cancel()
-        expect(3)
-        assertTrue(job.isCancelled)
-        try {
-            job.await()
-            expectUnreached()
-        } catch (e: JobCancellationException) {
-            if (RECOVER_STACK_TRACES) {
-                val cause = e.cause as JobCancellationException // shall be recovered JCE
-                assertNull(cause.cause)
-            } else {
-                assertNull(e.cause)
-            }
-            finish(7)
         }
     }
 }

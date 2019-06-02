@@ -43,7 +43,24 @@ internal fun <T> Continuation<T>.resumeUninterceptedMode(value: T, mode: Int) {
         MODE_ATOMIC_DEFAULT -> intercepted().resume(value)
         MODE_CANCELLABLE -> intercepted().resumeCancellable(value)
         MODE_DIRECT -> resume(value)
-        MODE_UNDISPATCHED -> withCoroutineContext(context, null) { resume(value) }
+        MODE_UNDISPATCHED -> withCoroutineContext(context, null) {
+            /*
+             * This check is necessary to make a cancellable resume when coroutine's context was changed,
+             * but it dispatcher wasn't.
+             * For example, in the situation like this:
+             * ```
+             * withContext(Job()) {
+             *     // Here we know that outer job is cancelled
+             * } // <- then here CE should occur
+             * ```
+             */
+            val job = context[Job]
+            if (job != null && !job.isActive) {
+                resumeWithException(job.getCancellationException())
+            } else {
+                resume(value)
+            }
+        }
         MODE_IGNORE -> {}
         else -> error("Invalid mode $mode")
     }
