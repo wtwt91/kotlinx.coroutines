@@ -13,19 +13,42 @@ import kotlin.coroutines.*
 import kotlin.jvm.*
 import kotlinx.coroutines.flow.unsafeFlow as flow
 
+@FlowPreview // todo: consider deprecating this typealias
 public typealias ExceptionPredicate = (Throwable) -> Boolean
 
 private val ALWAYS_TRUE: ExceptionPredicate = { true }
 
 /**
+ * :todo:
+ */
+public fun <T> Flow<T>.catch(action: suspend FlowCollector<T>.(Throwable) -> Unit): Flow<T> =
+    flow {
+        // Note that exception may come from the downstream operators, we should not catch them
+        var fromDownstream = false
+        try {
+            collect {
+                try {
+                    emit(it)
+                } catch (e: Throwable) {
+                    fromDownstream = true
+                    throw e
+                }
+            }
+        } catch (e: Throwable) {
+            if (fromDownstream || e.isCancellationCause(coroutineContext)) throw e
+            action(e)
+        }
+    }
+
+/**
  * Switches to the [fallback] flow if the original flow throws an exception that matches the [predicate].
  * Cancellation exceptions that were caused by the direct [cancel] call are not handled by this operator.
  */
-@FlowPreview
+@FlowPreview // todo: consider deprecating this operator
 public fun <T> Flow<T>.onErrorCollect(
     fallback: Flow<T>,
     predicate: ExceptionPredicate = ALWAYS_TRUE
-): Flow<T> = collectSafely { e ->
+): Flow<T> = catch { e ->
     if (!predicate(e)) throw e
     emitAll(fallback)
 }
@@ -34,9 +57,9 @@ public fun <T> Flow<T>.onErrorCollect(
  * Emits the [fallback] value and finishes successfully if the original flow throws exception that matches the given [predicate].
  * Cancellation exceptions that were caused by the direct [cancel] call are not handled by this operator.
  */
-@FlowPreview
+@FlowPreview // todo: consider deprecating this operator
 public fun <T> Flow<T>.onErrorReturn(fallback: T, predicate: ExceptionPredicate = ALWAYS_TRUE): Flow<T> =
-    collectSafely { e ->
+    catch { e ->
         if (!predicate(e)) throw e
         emit(fallback)
     }
@@ -82,21 +105,3 @@ private fun Throwable.isCancellationCause(coroutineContext: CoroutineContext): B
     return unwrap(job.getCancellationException()) == unwrap(this)
 }
 
-private fun <T> Flow<T>.collectSafely(onException: suspend FlowCollector<T>.(Throwable) -> Unit): Flow<T> =
-    flow {
-        // Note that exception may come from the downstream operators, we should not switch on that
-        var fromDownstream = false
-        try {
-            collect {
-                try {
-                    emit(it)
-                } catch (e: Throwable) {
-                    fromDownstream = true
-                    throw e
-                }
-            }
-        } catch (e: Throwable) {
-            if (fromDownstream || e.isCancellationCause(coroutineContext)) throw e
-            onException(e)
-        }
-    }
