@@ -1305,14 +1305,15 @@ internal class NodeList : LockFreeLinkedListHead(), Incomplete {
         append("]")
     }
 
-    override fun toString(): String = getString("Active")
+    override fun toString(): String =
+        if (DEBUG) getString("Active") else super.toString()
 }
 
 internal class InactiveNodeList(
     override val list: NodeList
 ) : Incomplete {
     override val isActive: Boolean get() = false
-    override fun toString(): String = list.getString("New")
+    override fun toString(): String = if (DEBUG) list.getString("New") else super.toString()
 }
 
 private class InvokeOnCompletion(

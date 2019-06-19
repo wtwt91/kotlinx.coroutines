@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
 package kotlinx.coroutines
@@ -61,9 +61,9 @@ internal abstract class ExecutorCoroutineDispatcherBase : ExecutorCoroutineDispa
 
     override fun dispatch(context: CoroutineContext, block: Runnable) {
         try {
-            executor.execute(timeSource.wrapTask(block))
+            executor.execute(wrapTask(block))
         } catch (e: RejectedExecutionException) {
-            timeSource.unTrackTask()
+            unTrackTask()
             DefaultExecutor.enqueue(block)
         }
     }

@@ -1,33 +1,11 @@
 /*
- * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
 package kotlinx.coroutines
 
 import kotlinx.coroutines.internal.*
-import kotlinx.coroutines.scheduling.*
-import java.util.concurrent.atomic.*
 import kotlin.coroutines.*
-
-private val COROUTINE_ID = AtomicLong()
-
-// for tests only
-internal fun resetCoroutineId() {
-    COROUTINE_ID.set(0)
-}
-
-internal const val COROUTINES_SCHEDULER_PROPERTY_NAME = "kotlinx.coroutines.scheduler"
-
-internal val useCoroutinesScheduler = systemProp(COROUTINES_SCHEDULER_PROPERTY_NAME).let { value ->
-    when (value) {
-        null, "", "on" -> true
-        "off" -> false
-        else -> error("System property '$COROUTINES_SCHEDULER_PROPERTY_NAME' has unrecognized value '$value'")
-    }
-}
-
-internal actual fun createDefaultDispatcher(): CoroutineDispatcher =
-    if (useCoroutinesScheduler) DefaultScheduler else CommonPool
 
 /**
  * Creates context for the new coroutine. It installs [Dispatchers.Default] when no other dispatcher nor

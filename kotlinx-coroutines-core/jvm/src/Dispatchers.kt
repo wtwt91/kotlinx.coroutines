@@ -1,11 +1,12 @@
 /*
- * Copyright 2016-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright 2016-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license.
  */
 
 @file:Suppress("unused")
 
 package kotlinx.coroutines
 
+import kotlinx.atomicfu.*
 import kotlinx.coroutines.internal.*
 import kotlinx.coroutines.scheduling.*
 import java.util.*
@@ -106,5 +107,32 @@ public actual object Dispatchers {
      * typically execution continues in the same thread.
      */
     @JvmStatic
-    public val IO: CoroutineDispatcher = DefaultScheduler.IO
+    public val IO: CoroutineDispatcher = createIoDispatcher()
 }
+
+// Dispatchers initialization
+
+internal const val COROUTINES_SCHEDULER_PROPERTY_NAME = "kotlinx.coroutines.scheduler"
+
+// @JvmField: Don't use JvmField here to enable R8 optimizations via "assumenosideeffects"
+internal val DEFAULT_SCHEDULER = systemProp(COROUTINES_SCHEDULER_PROPERTY_NAME).let { value ->
+    when (value) {
+        null, "", "on" -> true
+        "off" -> false
+        else -> error("System property '$COROUTINES_SCHEDULER_PROPERTY_NAME' has unrecognized value '$value'")
+    }
+}
+
+// R8 optimization hook, not const on purpose
+// @JvmField: Don't use JvmField here to enable R8 optimizations via "assumenosideeffects"
+@Suppress("MayBeConstant")
+internal val IO_SCHEDULER = true
+
+@Suppress("NOTHING_TO_INLINE") // For better constant propagation in R8
+internal actual inline fun createDefaultDispatcher(): CoroutineDispatcher =
+    if (DEFAULT_SCHEDULER) DefaultScheduler else CommonPool
+
+@Suppress("NOTHING_TO_INLINE", "ConstantConditionIf") // For better constant propagation in R8
+internal inline fun createIoDispatcher(): CoroutineDispatcher =
+    if (IO_SCHEDULER) DefaultScheduler.IO else CommonPool
+
